@@ -1,0 +1,79 @@
+name: Move Project Card on Issue Close
+
+on:
+  issues:
+    types: [closed]
+
+jobs:
+  move_card:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Move issue card to Done
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const projectNumber = 2; 
+            const doneColumnName = "Done";
+
+            const repo = context.repo;
+
+            // Buscar projetos do repositório
+            const { data: projects } = await github.rest.projects.listForRepo({
+              owner: repo.owner,
+              repo: repo.repo,
+            });
+
+            const project = projects.find(p => p.number === projectNumber);
+            if (!project) {
+              core.setFailed(`Projeto número ${projectNumber} não encontrado.`);
+              return;
+            }
+
+            // Buscar colunas do projeto
+            const { data: columns } = await github.rest.projects.listColumns({
+              project_id: project.id,
+            });
+
+            const doneColumn = columns.find(c => c.name === doneColumnName);
+            if (!doneColumn) {
+              core.setFailed(`Coluna "${doneColumnName}" não encontrada.`);
+              return;
+            }
+
+            // Função para encontrar o card da issue
+            async function findCardForIssue(issueNumber) {
+              for (const column of columns) {
+                const { data: cards } = await github.rest.projects.listCards({
+                  column_id: column.id,
+                });
+                const card = cards.find(c => c.content_url && c.content_url.endsWith(`/issues/${issueNumber}`));
+                if (card) {
+                  return { card, column };
+                }
+              }
+              return null;
+            }
+
+            const issueNumber = context.payload.issue.number;
+            const found = await findCardForIssue(issueNumber);
+
+            if (!found) {
+              console.log("Card da issue não encontrado no projeto.");
+              return;
+            }
+
+            if (found.column.id === doneColumn.id) {
+              console.log("Card já está na coluna Done.");
+              return;
+            }
+
+            // Move o card para a coluna Done
+            await github.rest.projects.moveCard({
+              card_id: found.card.id,
+              position: 'top',
+              column_id: doneColumn.id,
+            });
+
+            console.log(`Card movido para a coluna "${doneColumnName}".`);
