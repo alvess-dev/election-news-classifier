@@ -1,19 +1,19 @@
-name: Move Project Card on Issue Close
+name: Move to Done when issue closed
 
 on:
   issues:
     types: [closed]
 
 jobs:
-  move-closed-issue-to-done:
+  move-to-done:
     runs-on: ubuntu-latest
     steps:
-      - name: Move issue to Done
-        uses: fojia/action-move-issues-to-column@master
-        with:
-          project: 'Model Pipeline – Election Classifier' 
-          column: 'Done'
-          owner: 'alvess-dev'
-          repo: 'election-news-classifier'
-          type: 'repo'
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Call GraphQL to move issue to Done
+        env:
+          GITHUB_TOKEN: ${{ secrets.PROJECTS_TOKEN }}
+          ISSUE_ID: ${{ github.event.issue.node_id }}
+        run: |
+          curl -X POST -H "Authorization: bearer $GITHUB_TOKEN" -H "Content-Type: application/json" \
+          --data '{
+            "query": "mutation { updateProjectV2ItemFieldValue(input: {projectId: \"PVT_kwHOCNBg-c4A9hII\", itemId: \"'"$ISSUE_ID"'\", fieldId: \"PVTSSF_lAHOCNBg-c4A9hIIzgxMmJU\", value: { singleSelectOptionId: \"DONE_OPTION_ID\" }}) { clientMutationId } }"
+          }' https://api.github.com/graphql
