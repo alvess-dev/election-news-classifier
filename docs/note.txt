@@ -1,0 +1,11 @@
+co ocorrencia
+distancia de hamming
+distancia euclidiana
+Distância de Manhattan
+https://filipezabala.com/ea/medidas-de-similaridade-e-dissimilaridade.html 
+https://medium.com/@sarahmbs/medidas-de-similaridade-e-dissimilaridade-479f3d5f64c6
+https://analises-ecologicas.com/cap9
+CONIC
+SIICUSP
+https://analises-ecologicas.com/cap9
+https://files.cercomp.ufg.br/weby/up/417/o/Aula_2_Medidas_de_Semelhan%C3%A7a_EE_II_2017.pdf?1488843648
