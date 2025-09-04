@@ -61,42 +61,25 @@ def prepareTrainDfs(dfFake, dfReal):
 
     return dfFake, dfReal
 
+# def thresholdsCut(df):
+# aqui vai a logica de filtrar por threshold, pra cada coeficiente
 
-def evaluate(dfReal, dfFake, testNews):
-    dfMerged = dfReal.merge(dfFake, how='outer')
+def probabilitiesCalculation(df, countFakeUnique, countRealUnique):
+    totalFilteredFake = df['fakeCount'].sum()
+    totalFilteredReal = df['realCount'].sum()
 
-    countRealUnique = dfMerged.loc[dfMerged['realCount'].isna(
-    ), 'word'].count()
-    countFakeUnique = dfMerged.loc[dfMerged['fakeCount'].isna(
-    ), 'word'].count()
-
-    dfMerged.fillna(1, inplace=True)
-
-    dfMerged.loc[dfMerged['realCount'] > 1, 'realCount'] += 1
-    dfMerged.loc[dfMerged['fakeCount'] > 1, 'fakeCount'] += 1
-
-    totalReal = dfMerged['realCount'].sum()
-    totalFake = dfMerged['fakeCount'].sum()
-
-    dfMerged['fakeCount'] *= totalReal / totalFake
-
-    dfMerged['bc'] = abs(dfMerged['realCount'] - dfMerged['fakeCount']) / \
-        (dfMerged['realCount'] + dfMerged['fakeCount'])
-
-    dfMerged = dfMerged.loc[dfMerged['bc'] > 0.3]
-
-    totalFilteredFake = dfMerged['fakeCount'].sum()
-    totalFilteredReal = dfMerged['realCount'].sum()
-
-    dfProbabilities = dfMerged.copy()
-    dfProbabilities['fakeCount'] = dfMerged['fakeCount'] / \
+    dfProbabilities = df.copy()
+    dfProbabilities['fakeCount'] = df['fakeCount'] / \
         (countFakeUnique + totalFilteredFake)
-    dfProbabilities['realCount'] = dfMerged['realCount'] / \
+    dfProbabilities['realCount'] = df['realCount'] / \
         (countRealUnique + totalFilteredReal)
 
     dfProbabilities['fakeCount'] = np.log10(dfProbabilities['fakeCount'])
     dfProbabilities['realCount'] = np.log10(dfProbabilities['realCount'])
 
+    return dfProbabilities
+
+def classifyNews(testNews, dfProbabilities):
     resultLabels = ['fF', 'fR', 'rF', 'rR']
     dfResults = pd.DataFrame(0, index=resultLabels, columns=['count'])
 
@@ -131,6 +114,44 @@ def evaluate(dfReal, dfFake, testNews):
 
     return accuracy, sensitivityReal, precisionReal, sensitivityFake, precisionFake
 
+def evaluate(dfReal, dfFake, testNews):
+    dfMerged = dfReal.merge(dfFake, how='outer')
+
+    countRealUnique = dfMerged.loc[dfMerged['realCount'].isna(
+    ), 'word'].count()
+    countFakeUnique = dfMerged.loc[dfMerged['fakeCount'].isna(
+    ), 'word'].count()
+
+    dfMerged.fillna(1, inplace=True)
+
+    dfMerged.loc[dfMerged['realCount'] > 1, 'realCount'] += 1
+    dfMerged.loc[dfMerged['fakeCount'] > 1, 'fakeCount'] += 1
+
+    totalReal = dfMerged['realCount'].sum()
+    totalFake = dfMerged['fakeCount'].sum()
+
+    dfMerged['fakeCount'] *= totalReal / totalFake
+
+    # Filtering words with dissimilarity coefficients
+
+    dfMerged['bc'] = abs(dfMerged['realCount'] - dfMerged['fakeCount']) / \
+        (dfMerged['realCount'] + dfMerged['fakeCount'])
+
+    # other coefficients could be used here
+
+    # threshold = 0.3
+    dfBC = thresholdsCut(dfMerged) # ja vai devolver o dataframe filtrado, precisa filtrar por bc > threshold com varios thresholds e ver qual da melhor acuracia
+    #other thresholds could be used here
+
+    # dfMerged = dfMerged.loc[dfMerged['bc'] > 0.3]
+
+    dfProbabilities = probabilitiesCalculation(dfBC, countFakeUnique, countRealUnique)
+
+    # retorna a acuracia, sensibilidade e precisao e f1-score
+    return classifyNews(testNews, dfProbabilities)
+
+
+
 
 def calculateStdAndMean(values):
     n = len(values)
@@ -146,21 +167,34 @@ def confidenceInterval(stdDev, mean, n, z=1.96):
 
 
 for i in range(64):
+    # voce pode ajustar aqui para fazer o loop para cada coeficiente e cada threshold
+    # por enquanto ta fixo, mas tem que fazer o loop para cada coeficiente e cada threshold
+    # talvez criar uma funcao que recebe o coeficiente e o threshold e retorna os valores
+    # e ai fazer o loop chamando essa funcao
+    # ai no final voce tem que ter uma tabela com os intervalos de confiança para cada coeficiente e cada threshold
+    
     dfFake = dfFakeOriginal.copy()
     dfReal = dfRealOriginal.copy()
+
 
     [dfFakeTest, dfFakeTrain] = splitTrainTest(dfFake)
     [dfRealTest, dfRealTrain] = splitTrainTest(dfReal)
     dfTests = prepareTestDf(dfFakeTest, dfRealTest)
     [dfFakeTrain, dfRealTrain] = prepareTrainDfs(dfFakeTrain, dfRealTrain)
-    [accuracy, sensReal, precReal, sensFake, precFake] = evaluate(
-        dfRealTrain, dfFakeTrain, dfTests)
 
+    # tem que ajustar aqui em baixo para receber fazer isso para cada coeficiente (um trampo vai dar)
+    [accuracy, sensReal, precReal, sensFake, precFake] = evaluate(dfRealTrain, dfFakeTrain, dfTests)
+
+    # aqui vai ser chamada a funcao que calcula o intervalo de confiança
     accuracies.append(accuracy)
     sensitivitiesReal.append(sensReal)
     precisionsReal.append(precReal)
     sensitivitiesFake.append(sensFake)
     precisionsFake.append(precFake)
+
+
+# provavelmente isso aqui vai ser ajustado pra uma funcao que recebe os valores (acuracidade, sensi, f1 e precisão) e retorna o intervalo de confiança
+# calcula o intervalo de confiança para cada coeficiente e cada threshold
 
 stdPrecFake, meanPrecFake = calculateStdAndMean(precisionsFake)
 minPrecFake, maxPrecFake = confidenceInterval(
@@ -182,6 +216,7 @@ stdAccuracy, meanAccuracy = calculateStdAndMean(accuracies)
 minAccuracy, maxAccuracy = confidenceInterval(
     stdAccuracy, meanAccuracy, len(accuracies))
 
+# cria a tabela (TEM QUE FAZER ISSO PARA CADA COEFICIENTE E CADA THRESHOLD)
 summaryData = {
     'Metric': ['Precision Fake', 'Precision Real', 'Sensitivity Real', 'Sensitivity Fake', 'Accuracy'],
     'Minimum': [
@@ -200,6 +235,7 @@ summaryData = {
     ]
 }
 
+# salva a tabela em um arquivo csv de cada coeficiente e threshold
 dfConfidenceIntervals = pd.DataFrame(summaryData)
 dfConfidenceIntervals['Minimum'] = dfConfidenceIntervals['Minimum'].round(4)
 dfConfidenceIntervals['Maximum'] = dfConfidenceIntervals['Maximum'].round(4)
