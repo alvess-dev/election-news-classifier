@@ -182,7 +182,6 @@ for i in range(64):
     dfTests = prepareTestDf(dfFakeTest, dfRealTest)
     [dfFakeTrain, dfRealTrain] = prepareTrainDfs(dfFakeTrain, dfRealTrain)
 
-    # tem que ajustar aqui em baixo para receber fazer isso para cada coeficiente (um trampo vai dar)
     [accuracy, sensReal, precReal, sensFake, precFake] = evaluate(dfRealTrain, dfFakeTrain, dfTests)
 
     # aqui vai ser chamada a funcao que calcula o intervalo de confiança
@@ -193,7 +192,6 @@ for i in range(64):
     precisionsFake.append(precFake)
 
 
-# provavelmente isso aqui vai ser ajustado pra uma funcao que recebe os valores (acuracidade, sensi, f1 e precisão) e retorna o intervalo de confiança
 # calcula o intervalo de confiança para cada coeficiente e cada threshold
 
 stdPrecFake, meanPrecFake = calculateStdAndMean(precisionsFake)
