@@ -1,7 +1,7 @@
-```
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
-```
+
+
 # 📰 Election News Classifier — Fake News Detector (Brazilian Elections)
 
 **Short description**
